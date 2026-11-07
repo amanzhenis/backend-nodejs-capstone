@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd /home/project
-git clone https://github.com/amanzhenis/backend-nodejs-capstone.git
+if [ ! -d backend-nodejs-capstone/.git ]; then
+  git clone https://github.com/amanzhenis/backend-nodejs-capstone.git
+fi
 cd backend-nodejs-capstone
 mkdir -p /home/project/capstone-evidence
 NAMESPACE=$(kubectl config view --minify -o 'jsonpath={..namespace}')
