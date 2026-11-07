@@ -1,64 +1,37 @@
-/*jshint esversion: 8 */
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const pinoLogger = require('./logger');
-
-const connectToDatabase = require('./models/db');
-const {loadData} = require("./util/import-mongo/index");
-
-
-const app = express();
-app.use("*",cors());
-const port = 3060;
-
-// Connect to MongoDB; we just do this one time
-connectToDatabase().then(() => {
-    pinoLogger.info('Connected to DB');
+require('dotenv').config()
+const express = require('express')
+const cors = require('cors')
+const path = require('path')
+const fs = require('fs')
+const logger = require('./logger')
+const connectToDatabase = require('./models/db')
+const authRoutes = require('./routes/authRoutes')
+const secondChanceItemsRoutes = require('./routes/secondChanceItemsRoutes')
+const searchRoutes = require('./routes/searchRoutes')
+const app = express()
+app.use(cors())
+app.use(express.json({ limit: '1mb' }))
+app.use(require('pino-http')({ logger, redact: ['req.headers.authorization', 'req.headers["auth-token"]'] }))
+app.use('/images', express.static(path.join(__dirname, 'public/images')))
+app.use('/api/auth', authRoutes)
+app.use('/api/secondchance/items', secondChanceItemsRoutes)
+app.use('/api/secondchance/search', searchRoutes)
+app.get('/health', async (req, res, next) => {
+  try { await connectToDatabase(); res.json({ status: 'ok' }) } catch (error) { next(error) }
 })
-    .catch((e) => console.error('Failed to connect to DB', e));
-
-
-app.use(express.json());
-
-// Route files
-
-// authRoutes Step 2: import the authRoutes and store in a constant called authRoutes
-//{{insert code here}}
-
-// Items API Task 1: import the secondChanceItemsRoutes and store in a constant called secondChanceItemsRoutes
-//{{insert code here}}
-
-// Search API Task 1: import the searchRoutes and store in a constant called searchRoutes
-//{{insert code here}}
-
-
-const pinoHttp = require('pino-http');
-const logger = require('./logger');
-
-app.use(pinoHttp({ logger }));
-
-// Use Routes
-// authRoutes Step 2: add the authRoutes and to the server by using the app.use() method.
-//{{insert code here}}
-
-// Items API Task 2: add the secondChanceItemsRoutes to the server by using the app.use() method.
-//{{insert code here}}
-
-// Search API Task 2: add the searchRoutes to the server by using the app.use() method.
-//{{insert code here}}
-
-
-// Global Error Handler
-app.use((err, req, res, next) => {
-    console.error(err);
-    res.status(500).send('Internal Server Error');
-});
-
-app.get("/",(req,res)=>{
-    res.send("Inside the server")
+app.use('/api', (req, res) => res.status(404).json({ error: 'API route not found' }))
+const frontend = path.join(__dirname, '../secondChance-frontend/build')
+if (fs.existsSync(frontend)) {
+  app.get('/', (req, res) => res.sendFile(path.join(frontend, 'home.html')))
+  app.use(express.static(frontend))
+  app.get('*', (req, res) => res.sendFile(path.join(frontend, 'index.html')))
+}
+app.use((error, req, res, next) => {
+  logger.error(error)
+  res.status(error instanceof SyntaxError || error.name === 'MulterError' ? 400 : 500).json({ error: 'Unable to process request' })
 })
-
-app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
-});
+if (require.main === module) {
+  if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET is required')
+  connectToDatabase().then(() => app.listen(process.env.PORT || 3060, () => logger.info('SecondChance server ready'))).catch(error => { logger.error(error); process.exit(1) })
+}
+module.exports = app

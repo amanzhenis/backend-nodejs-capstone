@@ -42,6 +42,7 @@ function ItemPage() {
             console.log(url);
               const response = await fetch(url, {
                 method: 'POST',
+                headers: { Authorization: `Bearer ${sessionStorage.getItem('auth-token')}` },
                 body: formData
             });
     

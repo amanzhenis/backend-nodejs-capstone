@@ -81,3 +81,7 @@ h1, h2 {
         font-size: 1.25rem; /* Smaller font size for text on mobile */
     }
 }
+body { font-family: system-ui, sans-serif; padding: 32px; box-sizing: border-box; }
+.container { max-width: 1000px; text-align: center; }
+a.btn-primary { display: inline-block; text-decoration: none; }
+h2 { font-size: 2rem; }

@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongodb-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: secondchance-mongo}
+  template:
+    metadata:
+      labels: {app: secondchance-mongo}
+    spec:
+      securityContext:
+        fsGroup: 999
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: mongodb
+          image: mongo:6.0
+          ports: [{containerPort: 27017}]
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+          securityContext:
+            runAsUser: 999
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+          volumeMounts: [{name: data, mountPath: /data/db}]
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-service
+spec:
+  selector: {app: secondchance-mongo}
+  ports: [{port: 27017, targetPort: 27017}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: secondchanceapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: secondchanceapp}
+  template:
+    metadata:
+      labels: {app: secondchanceapp}
+    spec:
+      imagePullSecrets: [{name: icr}]
+      containers:
+        - name: secondchanceapp
+          image: __IMAGE__
+          ports: [{containerPort: 3060}]
+          env:
+            - {name: MONGO_URL, value: 'mongodb://mongodb-service:27017'}
+            - {name: MONGO_DB, value: secondChance}
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef: {name: secondchance-secret, key: JWT_SECRET}
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+          readinessProbe:
+            httpGet: {path: /health, port: 3060}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: secondchanceapp
+spec:
+  selector: {app: secondchanceapp}
+  ports: [{name: http, port: 3060, targetPort: 3060}]
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: secondchanceapp
+spec:
+  to: {kind: Service, name: secondchanceapp}
+  port: {targetPort: http}
+  tls: {termination: edge, insecureEdgeTerminationPolicy: Redirect}

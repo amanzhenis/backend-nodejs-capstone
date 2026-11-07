@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd /home/project
+git clone https://github.com/amanzhenis/backend-nodejs-capstone.git
+cd backend-nodejs-capstone
+mkdir -p /home/project/capstone-evidence
+NAMESPACE=$(kubectl config view --minify -o 'jsonpath={..namespace}')
+IMAGE="us.icr.io/${NAMESPACE}/secondchanceapp:capstone"
+docker build -t "$IMAGE" .
+docker push "$IMAGE"
+kubectl create secret generic secondchance-secret --from-literal=JWT_SECRET="$(openssl rand -hex 32)" --dry-run=client -o yaml | kubectl apply -f -
+sed "s|__IMAGE__|${IMAGE}|g" deploy/kubernetes.yml | kubectl apply -f -
+kubectl rollout status deployment/mongodb-deployment --timeout=240s
+kubectl rollout status deployment/secondchanceapp --timeout=240s
+kubectl exec deployment/secondchanceapp -- node secondChance-backend/util/import-mongo/index.js | tee /home/project/capstone-evidence/inserted_items
+kubectl get route secondchanceapp -o 'jsonpath={.spec.host}'
+echo
