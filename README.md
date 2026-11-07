@@ -40,4 +40,4 @@ docker build -t secondchance .
 
 CI/CD runs lint, integration tests against a MongoDB service, and a production container build. Tests cover duplicate registration, invalid credentials, authenticated profile updates, item creation/search/deletion, concurrent review writes and sentiment validation.
 
-`deploy/lab.sh` builds and publishes the image to the Skills Network registry, creates a fresh JWT secret and applies the Kubernetes resources. The frontend and APIs share an HTTPS OpenShift route. The MongoDB service is internal to the namespace. Never commit `.env` files, real passwords or signing keys.
+`deploy/lab.sh` builds and publishes the image to the Skills Network registry, creates a fresh JWT secret and applies the Kubernetes resources. The frontend and APIs share an HTTPS Skills Network application URL through Kubernetes port forwarding. The MongoDB service is internal to the namespace. Never commit `.env` files, real passwords or signing keys.

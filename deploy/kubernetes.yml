@@ -76,12 +76,3 @@ metadata:
 spec:
   selector: {app: secondchanceapp}
   ports: [{name: http, port: 3060, targetPort: 3060}]
----
-apiVersion: route.openshift.io/v1
-kind: Route
-metadata:
-  name: secondchanceapp
-spec:
-  to: {kind: Service, name: secondchanceapp}
-  port: {targetPort: http}
-  tls: {termination: edge, insecureEdgeTerminationPolicy: Redirect}
